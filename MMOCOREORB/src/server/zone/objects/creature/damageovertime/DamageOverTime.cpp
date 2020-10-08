@@ -9,7 +9,6 @@
 #include "server/zone/objects/creature/commands/effect/CommandEffect.h"
 #include "DamageOverTime.h"
 #include "server/zone/ZoneServer.h"
-#include "server/zone/managers/combat/CombatManager.h"
 
 DamageOverTime::DamageOverTime() {
 	setAttackerID(0);
@@ -23,13 +22,13 @@ DamageOverTime::DamageOverTime() {
 }
 
 DamageOverTime::DamageOverTime(CreatureObject* attacker,
-		uint64 tp,
-		uint8 attrib,
-		uint32 str,
-		uint32 dur,
-		int secondaryStrength) {
+							   uint64 tp,
+							   uint8 attrib,
+							   uint32 str,
+							   uint32 dur,
+							   int secondaryStrength) {
 
-	if (attacker != nullptr)
+	if (attacker != NULL)
 		setAttackerID(attacker->getObjectID());
 
 	setType(tp);
@@ -89,18 +88,6 @@ void DamageOverTime::addSerializableVariables() {
 
 }
 
-void to_json(nlohmann::json& j, const DamageOverTime& t) {
-	j["attackerID"] = t.attackerID;
-	j["type"] = t.type;
-	j["attribute"] = t.attribute;
-	j["strength"] = t.strength;
-	j["duration"] = t.duration;
-	j["applied"] = t.applied;
-	j["expires"] = t.expires;
-	j["nextTick"] = t.nextTick;
-	j["secondaryStrength"] = t.secondaryStrength;
-}
-
 void DamageOverTime::activate() {
 	expires.updateToCurrentTime();
 	expires.addMiliTime(duration * 1000);
@@ -115,13 +102,13 @@ uint32 DamageOverTime::applyDot(CreatureObject* victim) {
 	uint32 power = 0;
 	ManagedReference<CreatureObject*> attacker = victim->getZoneServer()->getObject(attackerID).castTo<CreatureObject*>();
 
-	if (attacker == nullptr)
+	if (attacker == NULL)
 		attacker = victim;
 
 	switch(type) {
 	case CreatureState::BLEEDING:
 		power = doBleedingTick(victim, attacker);
-		nextTick.addMiliTime(20000);
+		nextTick.addMiliTime(6000);
 		break;
 	case CreatureState::POISONED:
 		power = doPoisonTick(victim, attacker);
@@ -133,11 +120,11 @@ uint32 DamageOverTime::applyDot(CreatureObject* victim) {
 		break;
 	case CreatureState::ONFIRE:
 		power = doFireTick(victim, attacker);
-		nextTick.addMiliTime(10000);
+		nextTick.addMiliTime(5000);
 		break;
 	case CommandEffect::FORCECHOKE:
 		power = doForceChokeTick(victim, attacker);
-		nextTick.addMiliTime(5000);
+		nextTick.addMiliTime(6000);
 		break;
 	}
 
@@ -152,11 +139,11 @@ uint32 DamageOverTime::initDot(CreatureObject* victim, CreatureObject* attacker)
 	switch(type) {
 	case CreatureState::BLEEDING:
 		absorptionMod = Math::max(0, Math::min(50, victim->getSkillMod("absorption_bleeding")));
-		nextTick.addMiliTime(20000);
+		nextTick.addMiliTime(6000);
 		break;
 	case CreatureState::ONFIRE:
 		absorptionMod = Math::max(0, Math::min(50, victim->getSkillMod("absorption_fire")));
-		nextTick.addMiliTime(10000);
+		nextTick.addMiliTime(5000);
 		break;
 	case CreatureState::POISONED:
 		absorptionMod = Math::max(0, Math::min(50, victim->getSkillMod("absorption_poison")));
@@ -167,8 +154,8 @@ uint32 DamageOverTime::initDot(CreatureObject* victim, CreatureObject* attacker)
 		nextTick.addMiliTime(40000);
 		break;
 	case CommandEffect::FORCECHOKE:
-		nextTick.addMiliTime(5000);
-		strength *= ((100 - System::random(20)) * 0.01f);
+		nextTick.addMiliTime(6000);
+		strength = (float)(strength * 0.01f) + (strength * (System::random(100) * 0.01f));
 		victim->showFlyText("combat_effects", "choke", 0xFF, 0, 0);
 
 		break;
@@ -191,7 +178,7 @@ uint32 DamageOverTime::doBleedingTick(CreatureObject* victim, CreatureObject* at
 	int absorptionMod = Math::max(0, Math::min(50, victim->getSkillMod("absorption_bleeding")));
 
 	// absorption reduces the strength of a dot by the given %.
-	int damage = (int)(strength * (1.f - absorptionMod / 100.f));
+	int damage = (int)(strength * (5.f));
 	if (attr < damage) {
 		//System::out << "setting strength to " << attr -1 << endl;
 		damage = attr - 1;
@@ -232,7 +219,7 @@ uint32 DamageOverTime::doFireTick(CreatureObject* victim, CreatureObject* attack
 		damage = attr - 1;
 	}
 
-	int woundsToApply = (int)(secondaryStrength * (1.f + victim->getShockWounds() / 100.0f));
+	int woundsToApply = (int)(secondaryStrength * (1.f + victim->getShockWounds() / 75.0f));
 	int maxWoundsToApply = victim->getBaseHAM(attribute) - 1 - victim->getWounds(attribute);
 
 	woundsToApply = Math::min(woundsToApply, maxWoundsToApply);
@@ -360,38 +347,12 @@ uint32 DamageOverTime::doForceChokeTick(CreatureObject* victim, CreatureObject* 
 
 		Locker crossLocker(attackerRef, victimRef);
 
-		uint32 chokeDam = strength;
-
-		float jediBuffDamage = 0;
-		float rawDamage = chokeDam;
-
-		// Force Shield
-		int forceShield = victimRef->getSkillMod("force_shield");
-		if (forceShield > 0) {
-			jediBuffDamage = rawDamage - (chokeDam *= 1.f - (forceShield / 100.f));
-			victimRef->notifyObservers(ObserverEventType::FORCESHIELD, attackerRef, jediBuffDamage);
-			CombatManager::instance()->sendMitigationCombatSpam(victimRef, nullptr, (int)jediBuffDamage, CombatManager::FORCESHIELD);
-		}
-
-		//PSG with lightsaber resistance only
-		ManagedReference<ArmorObject*> psg = CombatManager::instance()->getPSGArmor(victimRef);
-		if (psg != nullptr && !psg->isVulnerable(SharedWeaponObjectTemplate::LIGHTSABER)) {
-			float armorReduction =  CombatManager::instance()->getArmorObjectReduction(psg, SharedWeaponObjectTemplate::LIGHTSABER);
-
-		if (armorReduction > 0)
-			chokeDam *= 1.f - (armorReduction / 100.f);
-
-		}
-
-		CombatManager::instance()->broadcastCombatSpam(attackerRef, victimRef, nullptr, chokeDam, "cbt_spam", "forcechoke_hit", 1);
-		victimRef->inflictDamage(attackerRef, attribute, chokeDam, true);
-
+		victimRef->inflictDamage(attackerRef, attribute, strength, true);
 		if (victimRef->hasAttackDelay())
 			victimRef->removeAttackDelay();
 
 		victimRef->playEffect("clienteffect/pl_force_choke.cef", "");
 		victimRef->sendSystemMessage("@combat_effects:choke_single");
-		victimRef->showFlyText("combat_effects", "choke", 0xFF, 0, 0);
 	}, "ForceChokeTickLambda");
 
 	return strength;

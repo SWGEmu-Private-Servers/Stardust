@@ -12,17 +12,17 @@
 void EnclaveTerminalMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, ObjectMenuResponse* menuResponse, CreatureObject* player) const {
 	ManagedReference<BuildingObject*> building = sceneObject->getParentRecursively(SceneObjectType::BUILDING).castTo<BuildingObject*>();
 
-	if (building == nullptr || player->isDead() || player->isIncapacitated())
+	if (building == NULL || player->isDead() || player->isIncapacitated())
 		return;
 
 	ZoneServer* zServ = building->getZoneServer();
 
-	if (zServ == nullptr)
+	if (zServ == NULL)
 		return;
 
 	FrsManager* frsManager = zServ->getFrsManager();
 
-	if (frsManager == nullptr)
+	if (frsManager == NULL)
 		return;
 
 	int enclaveType = frsManager->getEnclaveType(building);
@@ -49,9 +49,6 @@ void EnclaveTerminalMenuComponent::fillObjectMenuResponse(SceneObject* sceneObje
 	}
 
 	if (frsData->getCouncilType() == 0 && !ghost->isPrivileged())
-		return;
-
-	if (frsManager->isPlayerFightingInArena(player->getObjectID()))
 		return;
 
 	if (terminalType == VOTING) {
@@ -64,10 +61,9 @@ void EnclaveTerminalMenuComponent::fillObjectMenuResponse(SceneObject* sceneObje
 			menuResponse->addRadialMenuItem(75, 3, "@force_rank:demote_member"); // Demote Lower Tier Member
 
 		menuResponse->addRadialMenuItem(74, 3, "@force_rank:recover_jedi_items"); // Recover Jedi Items
-#if FRS_TESTING
+
 		if (ghost->isPrivileged())
 			menuResponse->addRadialMenuItem(76, 3, "Force Phase Change");
-#endif
 	} else if (terminalType == LIGHT_CHALLENGE) {
 		menuResponse->addRadialMenuItem(69, 3, "@force_rank:challenge_vote_status"); // No-Confidence Vote Status
 
@@ -76,6 +72,7 @@ void EnclaveTerminalMenuComponent::fillObjectMenuResponse(SceneObject* sceneObje
 			menuResponse->addRadialMenuItemToRadialID(69, 71, 3,"@force_rank:issue_challenge_vote"); // Issue No-Confidence Vote
 		}
 	} else if (terminalType == DARK_CHALLENGE) {
+
 		menuResponse->addRadialMenuItem(69, 3, "@pvp_rating:ch_terminal_view_scores"); // View Challenge Scores
 		menuResponse->addRadialMenuItem(70, 3, "@pvp_rating:ch_terminal_arena_status"); // Arena Status
 
@@ -87,15 +84,15 @@ void EnclaveTerminalMenuComponent::fillObjectMenuResponse(SceneObject* sceneObje
 
 		if (frsManager->canPlayerAcceptArenaChallenge(player))
 			menuResponse->addRadialMenuItem(72, 3, "@pvp_rating:ch_terminal_accept_challenge"); // Accept a Challenge
-#if FRS_TESTING
+
 		if (ghost->isPrivileged() && !frsManager->isArenaOpen())
 			menuResponse->addRadialMenuItem(76, 3, "(TESTING) Open Arena");
-#endif
+
 	}
 }
 
 int EnclaveTerminalMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, CreatureObject* player, byte selectedID) const {
-	if (sceneObject == nullptr || !sceneObject->isTangibleObject() || player == nullptr || player->isDead() || player->isIncapacitated())
+	if (sceneObject == NULL || !sceneObject->isTangibleObject() || player == NULL || player->isDead() || player->isIncapacitated())
 		return 0;
 
 	if (player->getDistanceTo(sceneObject) > 15) {
@@ -105,17 +102,17 @@ int EnclaveTerminalMenuComponent::handleObjectMenuSelect(SceneObject* sceneObjec
 
 	ManagedReference<BuildingObject*> building = sceneObject->getParentRecursively(SceneObjectType::BUILDING).castTo<BuildingObject*>();
 
-	if (building == nullptr)
+	if (building == NULL)
 		return 1;
 
 	ZoneServer* zServ = building->getZoneServer();
 
-	if (zServ == nullptr)
+	if (zServ == NULL)
 		return 1;
 
 	FrsManager* frsManager = zServ->getFrsManager();
 
-	if (frsManager == nullptr)
+	if (frsManager == NULL)
 		return 1;
 
 	int enclaveType = frsManager->getEnclaveType(building);
@@ -130,7 +127,7 @@ int EnclaveTerminalMenuComponent::handleObjectMenuSelect(SceneObject* sceneObjec
 
 	PlayerObject* ghost = player->getPlayerObject();
 
-	if (ghost == nullptr)
+	if (ghost == NULL)
 		return 1;
 
 	FrsData* frsData = ghost->getFrsData();
@@ -142,9 +139,6 @@ int EnclaveTerminalMenuComponent::handleObjectMenuSelect(SceneObject* sceneObjec
 	}
 
 	if (frsData->getCouncilType() == 0 && !ghost->isPrivileged())
-		return 1;
-
-	if (frsManager->isPlayerFightingInArena(player->getObjectID()))
 		return 1;
 
 	if (terminalType == VOTING) {
@@ -158,10 +152,8 @@ int EnclaveTerminalMenuComponent::handleObjectMenuSelect(SceneObject* sceneObjec
 			frsManager->sendVoteSUI(player, sceneObject, FrsManager::SUI_VOTE_DEMOTE, enclaveType);
 		else if (selectedID == 73)
 			frsManager->sendVoteSUI(player, sceneObject, FrsManager::SUI_VOTE_PETITION, enclaveType);
-#if FRS_TESTING
 		else if (selectedID == 76 && ghost->isPrivileged())
 			frsManager->sendVoteSUI(player, sceneObject, FrsManager::SUI_FORCE_PHASE_CHANGE, enclaveType);
-#endif
 		else if (selectedID == 74)
 			frsManager->recoverJediItems(player);
 	} else if (terminalType == LIGHT_CHALLENGE) {
@@ -182,17 +174,15 @@ int EnclaveTerminalMenuComponent::handleObjectMenuSelect(SceneObject* sceneObjec
 			frsManager->sendArenaChallengeSUI(player, sceneObject, FrsManager::SUI_ARENA_CHAL_ACCEPT, enclaveType);
 		else if (selectedID == 73)
 			frsManager->sendArenaChallengeSUI(player, sceneObject, FrsManager::SUI_ARENA_CHAL_ISSUE, enclaveType);
-#if FRS_TESTING
 		else if (selectedID == 76 && ghost->isPrivileged())
 			frsManager->forceArenaOpen(player);
-#endif
 	}
 
 	return 0;
 }
 
 int EnclaveTerminalMenuComponent::getTerminalType(SceneObject* terminal) const {
-	if (terminal == nullptr)
+	if (terminal == NULL)
 		return 0;
 
 	uint64 terminalCRC = terminal->getServerObjectCRC();

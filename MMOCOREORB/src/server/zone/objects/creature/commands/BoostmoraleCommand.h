@@ -8,6 +8,10 @@
 #include "server/zone/objects/group/GroupObject.h"
 #include "server/chat/ChatManager.h"
 #include "SquadLeaderCommand.h"
+#include "CombatQueueCommand.h"
+#include "server/zone/managers/combat/CombatManager.h"
+#include "server/zone/objects/player/events/setNormalTask.h"
+#include "server/zone/objects/scene/SceneObject.h"
 
 class BoostmoraleCommand : public SquadLeaderCommand {
 public:
@@ -29,12 +33,12 @@ public:
 
 		ManagedReference<CreatureObject*> player = cast<CreatureObject*>(creature);
 
-		if (player == nullptr)
+		if (player == NULL)
 			return GENERALERROR;
 
 		ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
 
-		if (ghost == nullptr)
+		if (ghost == NULL)
 			return GENERALERROR;
 
 		ManagedReference<GroupObject*> group = player->getGroup();
@@ -65,20 +69,21 @@ public:
 			UnicodeString shout(ghost->getCommandMessageString(STRING_HASHCODE("boostmorale")));
  	 	 	server->getChatManager()->broadcastChatMessage(player, shout, 0, 80, player->getMoodID(), 0, ghost->getLanguageID());
  	 	 	creature->updateCooldownTimer("command_message", 30 * 1000);
+ 	 	 	creature->playEffect("clienteffect/off_inspiration.cef", "");
 		}
 
 		return SUCCESS;
 	}
 
 	void getWounds(CreatureObject* leader, GroupObject* group, int* wounds) const {
-		if (group == nullptr || leader == nullptr)
+		if (group == NULL || leader == NULL)
 			return;
 
 		for (int i = 0; i < group->getGroupSize(); i++) {
 
 			ManagedReference<CreatureObject*> member = group->getGroupMember(i);
 
-			if (member == nullptr)
+			if (member == NULL)
 				continue;
 
 			if (!member->isPlayerCreature())
@@ -99,7 +104,7 @@ public:
 	}
 
 	bool distributeWounds(CreatureObject* leader, GroupObject* group, int* wounds) const {
-		if (group == nullptr || leader == nullptr)
+		if (group == NULL || leader == NULL)
 			return false;
 
 		int woundsPerMember = ceil((float)wounds[1]/(float)wounds[0]);
@@ -110,7 +115,7 @@ public:
 
 			ManagedReference<CreatureObject*> member = group->getGroupMember(i);
 
-			if (member == nullptr)
+			if (member == NULL)
 				continue;
 
 			if (!member->isPlayerCreature())
@@ -136,6 +141,7 @@ public:
 					woundsToApply = wounds[1] - totalWoundsApplied;
 
 				member->addWounds(j, woundsToApply, true, false);
+				member->playEffect("clienteffect/off_inspiration.cef", "");
 
 				woundsApplied += woundsToApply;
 				totalWoundsApplied += woundsToApply;
